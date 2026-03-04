@@ -1,0 +1,74 @@
+# =========================
+# NODE
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# ENV VARIABLES
+# =========================
+.env
+.env.local
+.env.development
+.env.production
+
+# =======================
+# BUILD / DIST
+# =========================
+dist/
+build/
+out/
+
+# =========================
+# LOGS
+# =========================
+logs
+*.log
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# TEMP FILES
+# =========================
+tmp/
+temp/
+
+# =========================
+# DATABASE LOCAL
+# =========================
+*.sqlite
+*.db
+
+# =========================
+# CACHE
+# =========================
+.cache/
+
+# =========================
+# FLUTTER (si el repo lo incluye)
+# =========================
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+
+# =========================
+# MACOS / WINDOWS
+# =========================
+*.swp
+*.swo
