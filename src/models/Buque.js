@@ -111,6 +111,7 @@ const BuqueSchema = new mongoose.Schema(
     codigoEIR: { type: String, default: null, trim: true },
     codigoSST: { type: String, default: null, trim: true },
     codigoSupervisor: { type: String, default: null, trim: true },
+    cantPersonas: { type: Number, default: null },
 
     /**
      * Estado del buque dentro del sistema

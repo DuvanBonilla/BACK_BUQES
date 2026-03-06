@@ -146,6 +146,18 @@ function calcularColorBuque(buque) {
 const crearBuque = async (req, res) => {
   try {
 
+      const cleanStr = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      return s === "" ? null : s;
+    };
+
+    const toNumberOrNull = (v) => {
+      if (v === undefined || v === null || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     // ✅ VALIDACIÓN ETA vs ETD (estimadas)
     if (req.body.etdEstimada && req.body.etaEstimada) {
       const eta = new Date(req.body.etaEstimada);
@@ -162,7 +174,20 @@ const crearBuque = async (req, res) => {
       }
     }
     // ✅ Agregamos sucursal
-    const { nombreBuque, etaEstimada, etdEstimada, movimientos, sucursal } = req.body;
+    const {
+      nombreBuque,
+      etaEstimada,
+      etdEstimada,
+      movimientos,
+      cantPersonas,
+      sucursal,
+      observaciones,
+      codigoEstibador,
+      codigoTarja,
+      codigoEIR,
+      codigoSST,
+      codigoSupervisor
+     } = req.body;
 
     // ✅ Consecutivo atómico (no se repite aunque creen 2 buques al mismo tiempo)
     const counter = await Counter.findOneAndUpdate(
@@ -173,10 +198,12 @@ const crearBuque = async (req, res) => {
 
     const nuevoBuque = new Buque({
       consecutivo: counter.seq,
-      nombreBuque,
+      nombreBuque: cleanStr(nombreBuque),
       etaEstimada,
       etdEstimada: etdEstimada ?? null,
-      movimientos: movimientos ?? null,
+      
+      movimientos: toNumberOrNull(movimientos),
+      cantPersonas: toNumberOrNull(cantPersonas),
 
       // ✅ regla: inicio operación = etaEstimada
       fechaInicioOperacion: etaEstimada,
@@ -185,6 +212,13 @@ const crearBuque = async (req, res) => {
       sucursal: sucursal && String(sucursal).trim() !== ""
         ? String(sucursal).trim()
         : null,
+      
+      observaciones: cleanStr(observaciones),
+      codigoEstibador: cleanStr(codigoEstibador),
+      codigoTarja: cleanStr(codigoTarja),
+      codigoEIR: cleanStr(codigoEIR),
+      codigoSST: cleanStr(codigoSST),
+      codigoSupervisor: cleanStr(codigoSupervisor),
     });
 
 
