@@ -1,5 +1,5 @@
 // Importamos el modelo Buque (MongoDB)
-const Buque = require('../models/Buque');
+const Buque = require("../models/Buque");
 
 const Counter = require("../models/Counter");
 
@@ -49,28 +49,25 @@ function calcularFranja(horasRestantes) {
  * entre franjas, como la manecilla de un reloj.
  */
 function calcularPosicionTimeline(horasRestantes) {
-
   // Si ya llegó o está en hora
   if (horasRestantes <= 0) return 100;
 
   const puntos = [
-    { h: 48, pos: 0 },   // inicio timeline
+    { h: 48, pos: 0 }, // inicio timeline
     { h: 24, pos: 25 },
     { h: 12, pos: 50 },
     { h: 6, pos: 70 },
     { h: 2, pos: 85 },
-    { h: 0, pos: 100 }  // operación
+    { h: 0, pos: 100 }, // operación
   ];
 
   if (horasRestantes >= 48) return 0;
 
   for (let i = 0; i < puntos.length - 1; i++) {
-
     const a = puntos[i];
     const b = puntos[i + 1];
 
     if (horasRestantes <= a.h && horasRestantes >= b.h) {
-
       const rangoHoras = a.h - b.h;
       const rangoPos = b.pos - a.pos;
 
@@ -104,14 +101,13 @@ function calcularPosicionTimeline(horasRestantes) {
  * - codigoSupervisor
  */
 function calcularColorBuque(buque) {
-
   // ✅ Lista de códigos que SÍ cuentan (sin codigoOperacion)
   const codigos = [
     buque.codigoEstibador,
     buque.codigoTarja,
     buque.codigoEIR,
     buque.codigoSST,
-    buque.codigoSupervisor
+    buque.codigoSupervisor,
   ];
 
   const total = codigos.length;
@@ -119,16 +115,18 @@ function calcularColorBuque(buque) {
   // ✅ Contamos cuántos están realmente llenos
   // - null / undefined -> vacío
   // - "" (string vacía) -> vacío
-  const llenos = codigos.filter(v => v !== null && v !== undefined && String(v).trim() !== '').length;
+  const llenos = codigos.filter(
+    (v) => v !== null && v !== undefined && String(v).trim() !== "",
+  ).length;
 
   // 🔴 ROJO: ninguno diligenciado
-  if (llenos === 0) return 'ROJO';
+  if (llenos === 0) return "ROJO";
 
   // 🟢 VERDE: todos diligenciados
-  if (llenos === total) return 'VERDE';
+  if (llenos === total) return "VERDE";
 
   // 🟠 NARANJA: algunos sí, otros no
-  return 'NARANJA';
+  return "NARANJA";
 }
 
 /**
@@ -145,8 +143,7 @@ function calcularColorBuque(buque) {
  */
 const crearBuque = async (req, res) => {
   try {
-
-      const cleanStr = (v) => {
+    const cleanStr = (v) => {
       if (v === undefined || v === null) return null;
       const s = String(v).trim();
       return s === "" ? null : s;
@@ -186,14 +183,14 @@ const crearBuque = async (req, res) => {
       codigoTarja,
       codigoEIR,
       codigoSST,
-      codigoSupervisor
-     } = req.body;
+      codigoSupervisor,
+    } = req.body;
 
     // ✅ Consecutivo atómico (no se repite aunque creen 2 buques al mismo tiempo)
     const counter = await Counter.findOneAndUpdate(
       { name: "buque" },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     const nuevoBuque = new Buque({
@@ -201,7 +198,7 @@ const crearBuque = async (req, res) => {
       nombreBuque: cleanStr(nombreBuque),
       etaEstimada,
       etdEstimada: etdEstimada ?? null,
-      
+
       movimientos: toNumberOrNull(movimientos),
       cantPersonas: toNumberOrNull(cantPersonas),
 
@@ -209,10 +206,11 @@ const crearBuque = async (req, res) => {
       fechaInicioOperacion: etaEstimada,
 
       // ✅ nuevo campo sucursal
-      sucursal: sucursal && String(sucursal).trim() !== ""
-        ? String(sucursal).trim()
-        : null,
-      
+      sucursal:
+        sucursal && String(sucursal).trim() !== ""
+          ? String(sucursal).trim()
+          : null,
+
       observaciones: cleanStr(observaciones),
       codigoEstibador: cleanStr(codigoEstibador),
       codigoTarja: cleanStr(codigoTarja),
@@ -220,7 +218,6 @@ const crearBuque = async (req, res) => {
       codigoSST: cleanStr(codigoSST),
       codigoSupervisor: cleanStr(codigoSupervisor),
     });
-
 
     const buqueGuardado = await nuevoBuque.save();
 
@@ -254,7 +251,6 @@ const crearBuque = async (req, res) => {
  */
 const obtenerBuques = async (req, res) => {
   try {
-
     // 1️⃣ Traemos los buques
     const buques = await Buque.find().sort({ etaEstimada: 1 });
 
@@ -269,7 +265,7 @@ const obtenerBuques = async (req, res) => {
         status: { $ne: "FINALIZADO" },
         etaEstimada: { $gt: ahora },
       },
-      { $set: { status: "PENDIENTE" } }
+      { $set: { status: "PENDIENTE" } },
     );
 
     // 2) Si el buque NO está finalizado y su ETA ya llegó/pasó => EN_OPERACION
@@ -278,7 +274,7 @@ const obtenerBuques = async (req, res) => {
         status: { $ne: "FINALIZADO" },
         etaEstimada: { $lte: ahora },
       },
-      { $set: { status: "EN_OPERACION" } }
+      { $set: { status: "EN_OPERACION" } },
     );
 
     // 2️⃣ Volvemos a consultar ya actualizados
@@ -287,8 +283,7 @@ const obtenerBuques = async (req, res) => {
     // 3️⃣ Calculamos extras para timeline
     const ahora2 = new Date();
 
-    const buquesConExtras = buquesActualizados.map(b => {
-
+    const buquesConExtras = buquesActualizados.map((b) => {
       const eta = new Date(b.etaEstimada);
 
       const msRestantes = eta.getTime() - ahora2.getTime();
@@ -304,15 +299,14 @@ const obtenerBuques = async (req, res) => {
         tiempoRestante: formatearTiempo(msRestantes),
         horasRestantes: Math.round(horasRestantes * 100) / 100,
         franja: calcularFranja(horasRestantes),
-        posicionTimeline: calcularPosicionTimeline(horasRestantes)
+        posicionTimeline: calcularPosicionTimeline(horasRestantes),
       };
     });
 
     res.json(buquesConExtras);
-
   } catch (error) {
-    console.error('ERROR obtenerBuques:', error);
-    res.status(500).json({ mensaje: 'Error al obtener los buques' });
+    console.error("ERROR obtenerBuques:", error);
+    res.status(500).json({ mensaje: "Error al obtener los buques" });
   }
 };
 
@@ -342,7 +336,7 @@ const obtenerBuquesActivos = async (req, res) => {
         status: { $ne: "FINALIZADO" },
         etaEstimada: { $gt: ahora },
       },
-      { $set: { status: "PENDIENTE" } }
+      { $set: { status: "PENDIENTE" } },
     );
 
     // 2) Si el buque NO está finalizado y su ETA ya llegó/pasó => EN_OPERACION
@@ -351,7 +345,7 @@ const obtenerBuquesActivos = async (req, res) => {
         status: { $ne: "FINALIZADO" },
         etaEstimada: { $lte: ahora },
       },
-      { $set: { status: "EN_OPERACION" } }
+      { $set: { status: "EN_OPERACION" } },
     );
 
     // 2) Buscamos SOLO activos (excluye FINALIZADO)
@@ -367,7 +361,7 @@ const obtenerBuquesActivos = async (req, res) => {
     const buques = await Buque.find(filtro).sort({ etaEstimada: 1 });
 
     // 3) Calculamos extras para timeline
-    const buquesConExtras = buques.map(b => {
+    const buquesConExtras = buques.map((b) => {
       const eta = new Date(b.etaEstimada);
 
       const msRestantes = eta.getTime() - ahora.getTime();
@@ -379,12 +373,11 @@ const obtenerBuquesActivos = async (req, res) => {
         tiempoRestante: formatearTiempo(msRestantes),
         horasRestantes: Math.round(horasRestantes * 100) / 100,
         franja: calcularFranja(horasRestantes),
-        posicionTimeline: calcularPosicionTimeline(horasRestantes)
+        posicionTimeline: calcularPosicionTimeline(horasRestantes),
       };
     });
 
     return res.json(buquesConExtras);
-
   } catch (error) {
     console.error("ERROR obtenerBuquesActivos:", error);
     return res.status(500).json({ mensaje: "Error al obtener buques activos" });
@@ -401,15 +394,15 @@ const obtenerBuquePorId = async (req, res) => {
   try {
     const buque = await Buque.findById(req.params.id);
 
-    if (!buque) return res.status(404).json({ mensaje: 'Buque no encontrado' });
+    if (!buque) return res.status(404).json({ mensaje: "Buque no encontrado" });
 
     res.json({
       ...buque.toObject(),
-      color: calcularColorBuque(buque)
+      color: calcularColorBuque(buque),
     });
   } catch (error) {
-    console.error('ERROR obtenerBuquePorId:', error);
-    res.status(500).json({ mensaje: 'Error al buscar el buque' });
+    console.error("ERROR obtenerBuquePorId:", error);
+    res.status(500).json({ mensaje: "Error al buscar el buque" });
   }
 };
 
@@ -421,7 +414,18 @@ const obtenerBuquePorId = async (req, res) => {
  */
 const actualizarBuque = async (req, res) => {
   try {
-    // ✅ VALIDACIÓN ETA vs ETD en UPDATE
+    const cleanStr = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      return s === "" ? null : s;
+    };
+
+    const toNumberOrNull = (v) => {
+      if (v === undefined || v === null || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    //  VALIDACIÓN ETA vs ETD en UPDATE
     if (req.body.etdEstimada) {
       const buqueActual = await Buque.findById(req.params.id);
       if (!buqueActual) {
@@ -445,26 +449,49 @@ const actualizarBuque = async (req, res) => {
       }
     }
 
-    // ✅ Copiamos el body para poder limpiar campos que NO queremos usar
-    const data = { ...req.body };
+    const data = {
+      nombreBuque: cleanStr(req.body.nombreBuque),
+      etaEstimada: req.body.etaEstimada,
+      etdEstimada: req.body.etdEstimada ?? null,
+      movimientos: toNumberOrNull(req.body.movimientos),
+      cantPersonas: toNumberOrNull(req.body.cantPersonas),
+      sucursal:
+        req.body.sucursal && String(req.body.sucursal).trim() !== ""
+          ? String(req.body.sucursal).trim()
+          : null,
+      observaciones: cleanStr(req.body.observaciones),
+      codigoEstibador: cleanStr(req.body.codigoEstibador),
+      codigoTarja: cleanStr(req.body.codigoTarja),
+      codigoEIR: cleanStr(req.body.codigoEIR),
+      codigoSST: cleanStr(req.body.codigoSST),
+      codigoSupervisor: cleanStr(req.body.codigoSupervisor),
+    };
 
-    // 🚫 Ignoramos codigoOperacion si llega por error
+    //  Ignoramos codigoOperacion
     delete data.codigoOperacion;
+
+    //  Si no mandan etaEstimada, no la sobreescribimos
+    if (req.body.etaEstimada === undefined) delete data.etaEstimada;
+
+    //  Si no mandan etdEstimada, no la sobreescribimos
+    if (req.body.etdEstimada === undefined) delete data.etdEstimada;
 
     const buqueActualizado = await Buque.findByIdAndUpdate(
       req.params.id,
       data,
-      { new: true }
+      { new: true, runValidators: true },
     );
 
-    if (!buqueActualizado) return res.status(404).json({ mensaje: 'Buque no encontrado' });
+    if (!buqueActualizado) {
+      return res.status(404).json({ mensaje: "Buque no encontrado" });
+    }
 
-    // ✅ Forzar status inmediato por regla ETA
+    //  Regla ETA -> status
     if (buqueActualizado.status !== "FINALIZADO") {
       const ahora = new Date();
       const eta = new Date(buqueActualizado.etaEstimada);
 
-      const nuevoStatus = (eta <= ahora) ? "EN_OPERACION" : "PENDIENTE";
+      const nuevoStatus = eta <= ahora ? "EN_OPERACION" : "PENDIENTE";
 
       if (nuevoStatus !== buqueActualizado.status) {
         buqueActualizado.status = nuevoStatus;
@@ -472,21 +499,18 @@ const actualizarBuque = async (req, res) => {
       }
     }
 
-    if (!buqueActualizado) return res.status(404).json({ mensaje: 'Buque no encontrado' });
-
-    res.json({
-      mensaje: '✅ Buque actualizado correctamente',
+    return res.json({
+      mensaje: "✅ Buque actualizado correctamente",
       buque: {
         ...buqueActualizado.toObject(),
-        color: calcularColorBuque(buqueActualizado)
-      }
+        color: calcularColorBuque(buqueActualizado),
+      },
     });
   } catch (error) {
-    console.error('ERROR actualizarBuque:', error);
-    res.status(500).json({ mensaje: 'Error al actualizar el buque' });
+    console.error("ERROR actualizarBuque:", error);
+    return res.status(500).json({ mensaje: "Error al actualizar el buque" });
   }
 };
-
 /**
  * =========================================================
  * FINALIZAR BUQUE (SOLO SI YA ESTÁ EN OPERACIÓN)
@@ -506,23 +530,23 @@ const finalizarBuque = async (req, res) => {
     const buque = await Buque.findById(id);
 
     if (!buque) {
-      return res.status(404).json({ mensaje: '❌ Buque no encontrado' });
+      return res.status(404).json({ mensaje: "❌ Buque no encontrado" });
     }
 
     // 2) Validación: solo finaliza si está EN_OPERACION
-    if (buque.status !== 'EN_OPERACION') {
+    if (buque.status !== "EN_OPERACION") {
       return res.status(400).json({
-        mensaje: '❌ No se puede finalizar: el buque aún no está en operación',
+        mensaje: "❌ No se puede finalizar: el buque aún no está en operación",
         statusActual: buque.status,
       });
     }
 
     // 3) Fecha fin (manual obligatoria según tu regla)
-    const { fechaFin } = req.body;
+    const { fechaFin, movimientos } = req.body;
 
     if (!fechaFin) {
       return res.status(400).json({
-        mensaje: '❌ Debes enviar fechaFin para finalizar (manual)',
+        mensaje: "❌ Debes enviar fechaFin para finalizar (manual)",
       });
     }
 
@@ -531,47 +555,53 @@ const finalizarBuque = async (req, res) => {
     // Validación simple: fecha válida
     if (isNaN(fechaFinal.getTime())) {
       return res.status(400).json({
-        mensaje: '❌ fechaFin inválida (formato incorrecto)',
+        mensaje: "❌ fechaFin inválida (formato incorrecto)",
         fechaFinRecibida: fechaFin,
       });
     }
 
+    if (movimientos !== undefined) {
+      const movNum = Number(movimientos);
+      buque.movimientos = Number.isFinite(movNum) ? movNum : null;
+    }
+
     // 4) Actualizar y guardar
-    buque.status = 'FINALIZADO';
+    buque.status = "FINALIZADO";
     buque.fechaFin = fechaFinal;
 
-    // ✅ fechaInicioOperacion por regla = etaEstimada
+    //  fechaInicioOperacion por regla = etaEstimada
     const inicioOp = buque.fechaInicioOperacion || buque.etaEstimada;
 
-    // ✅ Calculamos total horas operación
+    //  Calculamos total horas operación
     let totalHorasOperacion = null;
-    let rendimiento = null;
+    let rendimiento = 0;
 
     if (inicioOp && fechaFinal && fechaFinal >= inicioOp) {
       const diffMs = fechaFinal.getTime() - new Date(inicioOp).getTime();
       const horas = diffMs / (1000 * 60 * 60);
 
       totalHorasOperacion = Number(horas.toFixed(2));
+      const mov = Number(buque.movimientos ?? 0);
 
       // rendimiento = movimientos / horas
-      if (typeof buque.movimientos === "number" && buque.movimientos > 0 && totalHorasOperacion > 0) {
-        rendimiento = Number((buque.movimientos / totalHorasOperacion).toFixed(2));
+      if (totalHorasOperacion > 0) {
+        rendimiento = Number((mov / totalHorasOperacion).toFixed(2));
       }
     }
 
-    // ✅ Persistimos en DB
+    //  Persistimos en DB
     buque.totalHorasOperacion = totalHorasOperacion;
     buque.rendimiento = rendimiento;
 
     const buqueFinalizado = await buque.save();
 
     return res.json({
-      mensaje: '✅ Buque finalizado correctamente',
+      mensaje: " Buque finalizado correctamente",
       buque: buqueFinalizado,
     });
   } catch (error) {
-    console.error('ERROR finalizarBuque:', error);
-    return res.status(500).json({ mensaje: 'Error al finalizar el buque' });
+    console.error("ERROR finalizarBuque:", error);
+    return res.status(500).json({ mensaje: "Error al finalizar el buque" });
   }
 };
 
@@ -590,18 +620,17 @@ const eliminarBuque = async (req, res) => {
 
     // 2) Si no existe, respondemos 404
     if (!buqueEliminado) {
-      return res.status(404).json({ mensaje: '❌ Buque no encontrado' });
+      return res.status(404).json({ mensaje: "❌ Buque no encontrado" });
     }
 
     // 3) Confirmación
     return res.json({
-      mensaje: '✅ Buque eliminado correctamente',
-      buque: buqueEliminado
+      mensaje: "✅ Buque eliminado correctamente",
+      buque: buqueEliminado,
     });
-
   } catch (error) {
-    console.error('ERROR eliminarBuque:', error);
-    return res.status(500).json({ mensaje: 'Error al eliminar el buque' });
+    console.error("ERROR eliminarBuque:", error);
+    return res.status(500).json({ mensaje: "Error al eliminar el buque" });
   }
 };
 
@@ -634,7 +663,7 @@ const obtenerFinalizados = async (req, res) => {
       .limit(limit);
 
     // (Opcional) agregar color por consistencia UI
-    const data = buques.map(b => ({
+    const data = buques.map((b) => ({
       ...b.toObject(),
       color: calcularColorBuque(b),
     }));
@@ -699,6 +728,7 @@ const exportBuquesExcel = async (req, res) => {
       { header: "Codigo Tarjador", key: "tarja", width: 16 },
       { header: "Codigo EIR", key: "eir", width: 14 },
       { header: "Codigo Supervisor", key: "supervisor", width: 18 },
+      {header: "Personas Por Buque", key: "cantPersonas", width: 18},
       { header: "Rendimiento", key: "rendimiento", width: 14 },
     ];
     // ✅ Formato Excel para fechas (col 2 y 3)
@@ -763,13 +793,14 @@ const exportBuquesExcel = async (req, res) => {
         tarja: b.codigoTarja || "",
         eir: b.codigoEIR || "",
         supervisor: b.codigoSupervisor || "",
+        cantPersonas: toNumberOrBlank(b.cantPersonas),
         rendimiento,
       });
     });
 
     // Formatos numéricos
-    sheet.getColumn(5).numFmt = "0.00";  // Total horas
-    sheet.getColumn(6).numFmt = "0";     // Cantidad
+    sheet.getColumn(5).numFmt = "0.00"; // Total horas
+    sheet.getColumn(6).numFmt = "0"; // Cantidad
     sheet.getColumn(11).numFmt = "0.00"; // Rendimiento
 
     // ✅ Descargar
@@ -777,7 +808,7 @@ const exportBuquesExcel = async (req, res) => {
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
@@ -785,7 +816,9 @@ const exportBuquesExcel = async (req, res) => {
     res.end();
   } catch (error) {
     console.error("ERROR exportBuquesExcel:", error);
-    return res.status(500).json({ ok: false, msg: "Error generando el Excel." });
+    return res
+      .status(500)
+      .json({ ok: false, msg: "Error generando el Excel." });
   }
 };
 
