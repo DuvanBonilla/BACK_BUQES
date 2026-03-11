@@ -834,7 +834,7 @@ module.exports = {
   obtenerBuquePorId,
   actualizarBuque,
   finalizarBuque,
-  eliminarBuque, // 👈 MUY IMPORTANTE
-  exportBuquesExcel, // ✅ NUEVO
+  eliminarBuque, 
+  exportBuquesExcel,
   obtenerFinalizados,
 };
