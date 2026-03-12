@@ -93,7 +93,7 @@ router.put("/:id", async (req, res) => {
         }
 
         const user = await Usuario.findByIdAndUpdate(id, update, {
-            new: true,
+            returnDocument: 'after' ,
             runValidators: true,
         });
         if (!user) return res.status(404).json({ message: "Usuario no encontrado" });

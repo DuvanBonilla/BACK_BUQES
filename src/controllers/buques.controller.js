@@ -190,7 +190,7 @@ const crearBuque = async (req, res) => {
     const counter = await Counter.findOneAndUpdate(
       { name: "buque" },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true },
+      { returnDocument: 'after' , upsert: true },
     );
 
     const nuevoBuque = new Buque({
@@ -479,7 +479,7 @@ const actualizarBuque = async (req, res) => {
     const buqueActualizado = await Buque.findByIdAndUpdate(
       req.params.id,
       data,
-      { new: true, runValidators: true },
+      { returnDocument: 'after' , runValidators: true },
     );
 
     if (!buqueActualizado) {
