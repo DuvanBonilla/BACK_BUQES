@@ -73,7 +73,7 @@ router.put("/:id", async (req, res) => {
         const update = {};
         if (nombre != null) update.nombre = String(nombre).trim();
 
-        // ✅ si se quiere cambiar username, validar que no choque con otro
+        //  si se quiere cambiar username, validar que no choque con otro
         if (username != null) {
             const newUsername = String(username).trim();
             const exists = await Usuario.findOne({
