@@ -190,7 +190,7 @@ const crearBuque = async (req, res) => {
     const counter = await Counter.findOneAndUpdate(
       { name: "buque" },
       { $inc: { seq: 1 } },
-      { returnDocument: 'after' , upsert: true },
+      { returnDocument: "after", upsert: true },
     );
 
     const nuevoBuque = new Buque({
@@ -479,7 +479,7 @@ const actualizarBuque = async (req, res) => {
     const buqueActualizado = await Buque.findByIdAndUpdate(
       req.params.id,
       data,
-      { returnDocument: 'after' , runValidators: true },
+      { returnDocument: "after", runValidators: true },
     );
 
     if (!buqueActualizado) {
@@ -679,7 +679,9 @@ const exportBuquesExcel = async (req, res) => {
   try {
     const { from, to } = req.query;
 
-    // ✅ Validación
+    // =========================
+    // VALIDACIONES
+    // =========================
     if (!from || !to) {
       return res.status(400).json({
         ok: false,
@@ -687,36 +689,51 @@ const exportBuquesExcel = async (req, res) => {
       });
     }
 
-    // ✅ Rango completo del día (UTC para evitar líos)
-    const fromDate = new Date(`${from}T00:00:00.000Z`);
-    const toDate = new Date(`${to}T23:59:59.999Z`);
+    // =========================
+    // RANGO COLOMBIA (UTC-5)
+    // =========================
+    // Colombia 00:00 -> UTC 05:00
+    const fromDate = new Date(`${from}T05:00:00.000Z`);
+
+    // Colombia 23:59 -> UTC 04:59 siguiente día
+    const toDate = new Date(`${to}T04:59:59.999Z`);
+    toDate.setDate(toDate.getDate() + 1);
 
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
       return res.status(400).json({
         ok: false,
-        msg: "Formato inválido. Usa YYYY-MM-DD en from y to.",
+        msg: "Formato inválido. Usa YYYY-MM-DD",
       });
     }
 
     if (fromDate > toDate) {
       return res.status(400).json({
         ok: false,
-        msg: "El rango es inválido: from no puede ser mayor que to.",
+        msg: "Rango inválido",
       });
     }
 
-    // ✅ Consulta por etaEstimada
+    // =========================
+    // CONSULTA
+    // =========================
     const buques = await Buque.find({
-      etaEstimada: { $gte: fromDate, $lte: toDate },
+      etaEstimada: {
+        $gte: fromDate,
+        $lte: toDate,
+      },
     })
       .sort({ etaEstimada: 1 })
       .lean();
 
-    // ✅ Crear Excel
+    // =========================
+    // EXCEL
+    // =========================
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Buques");
 
-    // ✅ Encabezados EXACTOS
+    // =========================
+    // COLUMNAS
+    // =========================
     sheet.columns = [
       { header: "ID (Consecutivo)", key: "consecutivo", width: 16 },
       { header: "Fecha y hora de inicio", key: "inicio", width: 24 },
@@ -724,46 +741,66 @@ const exportBuquesExcel = async (req, res) => {
       { header: "Nombre Buque", key: "nombre", width: 28 },
       { header: "Total Horas Operacion", key: "horas", width: 20 },
       { header: "Cantidad", key: "cantidad", width: 12 },
-      { header: "Codigo Estibador", key: "estibador", width: 16 },
-      { header: "Codigo Tarjador", key: "tarja", width: 16 },
+      { header: "Codigo Estibador", key: "estibador", width: 18 },
+      { header: "Codigo Tarjador", key: "tarja", width: 18 },
       { header: "Codigo EIR", key: "eir", width: 14 },
-      { header: "Codigo Supervisor", key: "supervisor", width: 18 },
-      {header: "Personas Por Buque", key: "cantPersonas", width: 18},
+      { header: "Codigo Supervisor", key: "supervisor", width: 20 },
+      { header: "Personas Por Buque", key: "cantPersonas", width: 20 },
       { header: "Rendimiento", key: "rendimiento", width: 14 },
     ];
-    // ✅ Formato Excel para fechas (col 2 y 3)
-    sheet.getColumn(2).numFmt = "dd/mm/yyyy hh:mm";
-    sheet.getColumn(3).numFmt = "dd/mm/yyyy hh:mm";
 
-    // ✅ Header bonito
+    // =========================
+    // HEADER
+    // =========================
     sheet.getRow(1).font = { bold: true };
-    sheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    // Helpers
-    const fmtDateTime = (d) => {
-      if (!d) return "";
-      const date = new Date(d);
+    sheet.views = [
+      {
+        state: "frozen",
+        ySplit: 1,
+      },
+    ];
 
-      // formato: YYYY-MM-DD HH:mm (UTC)
-      const yyyy = date.getUTCFullYear();
-      const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-      const dd = String(date.getUTCDate()).padStart(2, "0");
-      const hh = String(date.getUTCHours()).padStart(2, "0");
-      const mi = String(date.getUTCMinutes()).padStart(2, "0");
-
-      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    // =========================
+    // HELPERS
+    // =========================
+    const toNumberOrBlank = (v) => {
+      return v === null || v === undefined ? "" : v;
     };
 
-    const toNumberOrBlank = (v) => (v === null || v === undefined ? "" : v);
+    // UTC -> COLOMBIA
+    const formatBogota = (d) => {
+      if (!d) return "";
 
-    // ✅ Rows
-    buques.forEach((b, idx) => {
+      const utc = new Date(d);
+
+      // Restar 5 horas
+      utc.setHours(utc.getHours() - 5);
+
+      const day = String(utc.getDate()).padStart(2, "0");
+      const month = String(utc.getMonth() + 1).padStart(2, "0");
+      const year = utc.getFullYear();
+
+      const hours = String(utc.getHours()).padStart(2, "0");
+      const minutes = String(utc.getMinutes()).padStart(2, "0");
+
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
+
+    // =========================
+    // ROWS
+    // =========================
+    buques.forEach((b) => {
       const inicio = b.etaEstimada ? new Date(b.etaEstimada) : null;
+
       const fin = b.fechaFin ? new Date(b.fechaFin) : null;
 
       let totalHoras = "";
       let rendimiento = "";
 
+      // =========================
+      // CALCULO HORAS
+      // =========================
       if (
         inicio &&
         fin &&
@@ -772,53 +809,77 @@ const exportBuquesExcel = async (req, res) => {
         fin >= inicio
       ) {
         const diffMs = fin.getTime() - inicio.getTime();
+
         const horas = diffMs / (1000 * 60 * 60);
 
         totalHoras = Number(horas.toFixed(2));
 
-        const mvt = b.movimientos;
-        if (typeof mvt === "number" && mvt > 0 && totalHoras > 0) {
+        const mvt = Number(b.movimientos || 0);
+
+        if (mvt > 0 && totalHoras > 0) {
           rendimiento = Number((mvt / totalHoras).toFixed(2));
         }
       }
 
+      // =========================
+      // ROW EXCEL
+      // =========================
       sheet.addRow({
         consecutivo: b.consecutivo ?? "",
-        inicio: inicio ? new Date(inicio) : null,
-        fin: fin ? new Date(fin) : null,
+
+        // YA FORMATEADO COLOMBIA
+        inicio: formatBogota(inicio),
+        fin: formatBogota(fin),
+
         nombre: b.nombreBuque || "",
+
         horas: totalHoras,
+
         cantidad: toNumberOrBlank(b.movimientos),
+
         estibador: b.codigoEstibador || "",
+
         tarja: b.codigoTarja || "",
+
         eir: b.codigoEIR || "",
+
         supervisor: b.codigoSupervisor || "",
+
         cantPersonas: toNumberOrBlank(b.cantPersonas),
+
         rendimiento,
       });
     });
 
-    // Formatos numéricos
-    sheet.getColumn(5).numFmt = "0.00"; // Total horas
-    sheet.getColumn(6).numFmt = "0"; // Cantidad
-    sheet.getColumn(11).numFmt = "0.00"; // Rendimiento
+    // =========================
+    // FORMATOS NUMERICOS
+    // =========================
+    sheet.getColumn(5).numFmt = "0.00";
+    sheet.getColumn(6).numFmt = "0";
+    sheet.getColumn(12).numFmt = "0.00";
 
-    // ✅ Descargar
+    // =========================
+    // DESCARGA
+    // =========================
     const fileName = `buques_${from}_a_${to}.xlsx`;
 
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
+
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
     await workbook.xlsx.write(res);
+
     res.end();
   } catch (error) {
     console.error("ERROR exportBuquesExcel:", error);
-    return res
-      .status(500)
-      .json({ ok: false, msg: "Error generando el Excel." });
+
+    return res.status(500).json({
+      ok: false,
+      msg: "Error generando Excel",
+    });
   }
 };
 
@@ -834,7 +895,7 @@ module.exports = {
   obtenerBuquePorId,
   actualizarBuque,
   finalizarBuque,
-  eliminarBuque, 
+  eliminarBuque,
   exportBuquesExcel,
   obtenerFinalizados,
 };
