@@ -772,21 +772,16 @@ const exportBuquesExcel = async (req, res) => {
     const formatBogota = (d) => {
       if (!d) return "";
 
-      const utc = new Date(d);
-
-      // Restar 5 horas
-      utc.setHours(utc.getHours() - 5);
-
-      const day = String(utc.getDate()).padStart(2, "0");
-      const month = String(utc.getMonth() + 1).padStart(2, "0");
-      const year = utc.getFullYear();
-
-      const hours = String(utc.getHours()).padStart(2, "0");
-      const minutes = String(utc.getMinutes()).padStart(2, "0");
-
-      return `${day}/${month}/${year} ${hours}:${minutes}`;
+      return new Intl.DateTimeFormat("es-CO", {
+        timeZone: "America/Bogota",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(new Date(d));
     };
-
     // =========================
     // ROWS
     // =========================
